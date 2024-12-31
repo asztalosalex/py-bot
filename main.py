@@ -1,2 +1,2 @@
-from bot.discord_init import *
+from bot.discord_init import DiscordBot
 client = DiscordBot()

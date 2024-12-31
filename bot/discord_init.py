@@ -15,19 +15,21 @@ class DiscordBot(commands.Bot):
         intents = discord.Intents.default()
         intents.message_content = True
         super().__init__(command_prefix='!', intents=intents, description='test')
+        self.bot = self.run_bot()
 
+    async def setup_hook(self):
+        """This is called when the bot starts up"""
+        await self.load_extension('bot.cogs.basic_commands')
+        await self.load_extension('bot.cogs.ai_handler')
 
     async def on_ready(self):
         print(f'Successfully logged in as {self.user}')
         print(f'Bot ID: {self.user.id}')
-        print('Connected to guilds:')
+        print('Bot is connected servers below:')
         for guild in self.guilds:
             print(f'- {guild.name} (ID: {guild.id})')
         print('Bot is ready for commands!')
 
-    
-def run_bot():
-    bot = DiscordBot()
-    bot.run(bot.token)
+    def run_bot(self):
+        self.run(self.token)
 
-run_bot()
