@@ -48,4 +48,19 @@ class AiInit:
             return None
         
 
+    def generate_image(self, request_from_user: str):
+
+        try:
+            response = self.client.images.generate(
+            model="dall-e-3",
+            prompt= request_from_user,
+            n=1,
+            size="1024x1024"
+            )
+            return response.data[0].url
+        
+        except Exception as e:
+            print(f"Error whlie request for images: {str(e)}")
+        
+
 
