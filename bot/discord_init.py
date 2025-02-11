@@ -2,6 +2,7 @@ import discord
 import os
 from dotenv import load_dotenv
 from discord.ext import commands
+from lol.lol_requests import LolRequests
 
 class DiscordBot(commands.Bot):
 
@@ -14,6 +15,8 @@ class DiscordBot(commands.Bot):
         print("Initializing bot...")
         intents = discord.Intents.default()
         intents.message_content = True
+        intents.presences = True
+        intents.members = True
         super().__init__(command_prefix='!', intents=intents, description='test')
         self.bot = self.run_bot()
 
@@ -22,6 +25,32 @@ class DiscordBot(commands.Bot):
         await self.load_extension('bot.cogs.basic_commands')
         await self.load_extension('bot.cogs.ai_handler')
 
+
+    async def on_guild_channel_update(self, before, after):
+        print(f'Channel {before.name} updated to {after.name}')
+
+    async def on_presence_update(self, before, after):
+        print(f'User activity is {before.activity} and {after.activity}')
+        
+        if before.activity is None and after.activity is not None:
+            await self.get_channel(1201609666099150980).send(f'{after.name} started playing {after.activity.name}')
+        
+        elif before.activity is not None and after.activity is None:
+            await self.get_channel(1201609666099150980).send(f'{after.name} stopped playing {before.activity.name}')
+        
+        elif (before.activity and after.activity and 
+              before.activity.details != after.activity.details and 
+              after.activity.details is not None):
+            lol_requests = LolRequests()
+            summoner_name: str = lol_requests.get_summoner_name_by_member_id(after.id)
+            puuid: int = lol_requests.get_puuid(summoner_name=summoner_name)
+            active_game = lol_requests.get_active_game(puuid=puuid)
+
+            await self.get_channel(1201609666099150980).send(
+                f'{after.name} is now playing {after.activity.name} - {after.activity.details}\n Game details{active_game}'
+            )
+
+
     async def on_ready(self):
         print(f'Successfully logged in as {self.user}')
         print(f'Bot ID: {self.user.id}')
@@ -29,6 +58,8 @@ class DiscordBot(commands.Bot):
         for guild in self.guilds:
             print(f'- {guild.name} (ID: {guild.id})')
         print('Bot is ready for commands!')
+        
+        
 
     def run_bot(self):
         self.run(self.token)
