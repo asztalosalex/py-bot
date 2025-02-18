@@ -50,3 +50,4 @@ class LolRequests:
         else:
             print(f'Jelenleg nincs aktív játék')
             return None
+         
