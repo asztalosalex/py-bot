@@ -30,7 +30,6 @@ class DiscordBot(commands.Bot):
         print(f'Channel {before.name} updated to {after.name}')
 
     async def on_presence_update(self, before, after):
-        print(f'User activity is {before.activity} and {after.activity}')
         
         if before.activity is None and after.activity is not None:
             await self.get_channel(1201609666099150980).send(f'{after.name} started playing {after.activity.name}')
@@ -47,7 +46,7 @@ class DiscordBot(commands.Bot):
             active_game = lol_requests.get_active_game(puuid=puuid)
 
             await self.get_channel(1201609666099150980).send(
-                f'{after.name} is now playing {after.activity.name} - {after.activity.details}\n Game details{active_game}'
+                f'{after.id} - {after.name} is now playing {after.activity.name} - {after.activity.details}\n Game details{active_game}'
             )
 
 

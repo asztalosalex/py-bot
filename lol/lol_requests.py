@@ -7,7 +7,7 @@ load_dotenv()
 
 class LolRequests:
 
-    REGION = 'eun1'
+    REGION = 'europe'
     TAG_LINE = 'eune'
 
     def __init__(self):
@@ -19,8 +19,7 @@ class LolRequests:
         if response.status_code == 200:
             return response.json()['puuid']
         else:
-            print(response.status_code)
-            raise Exception(f"Failed to fetch PUUID for {summoner_name}")
+            raise Exception(f"Failed to fetch PUUID for {summoner_name}. \n Status code is: {response.status_code}\n Request url: {url}")
         
     def get_match_history(self, puuid)->list:
         url = f"https://{self.REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids"
