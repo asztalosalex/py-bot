@@ -8,13 +8,12 @@ load_dotenv()
 class LolRequests:
 
     REGION = 'europe'
-    TAG_LINE = 'eune'
 
     def __init__(self):
         self.api_key = os.getenv('LOL_API_KEY')
         
-    def get_puuid(self, summoner_name)->str:
-        url = f"https://{self.REGION}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{self.TAG_LINE}"
+    def get_puuid(self, summoner_name: str, tag: str)->str:
+        url = f"https://{self.REGION}.api.riotgames.com/riot/account/v1/accounts/by-riot-id/{summoner_name}/{tag}"
         response = requests.get(url, headers={'X-Riot-Token': self.api_key})
         if response.status_code == 200:
             return response.json()['puuid']
