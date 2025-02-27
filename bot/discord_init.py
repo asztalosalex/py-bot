@@ -58,7 +58,6 @@ class DiscordBot(commands.Bot):
             print(f'- {guild.name} (ID: {guild.id})')
         print('Bot is ready for commands!')
         
-        
 
     def run_bot(self):
         self.run(self.token)

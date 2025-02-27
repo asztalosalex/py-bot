@@ -30,14 +30,7 @@ class LolRequests:
         response = requests.get(url, headers={'X-Riot-Token': self.api_key})
         return response.json()
     
-    def get_summoner_name_by_member_id(guild_id: str, member_id: int) -> str:
-        with open ('data/summoner_names.json', 'r') as f:
-            data = json.load(f)
-
-            try:
-                return data[str(guild_id)][str(member_id)]['summoner_name']
-            except KeyError:
-                raise Exception(f'No summoner name found for the Guild ID: {guild_id} and member ID: {member_id}')
+    
     
     def get_active_game(self, puuid: int)->dict:
 
