@@ -12,7 +12,7 @@ class FcsApi:
         self.base_url = os.getenv('FCS_API_BASE_URL')
 
 
-    def get_forex_data(self):
+    def get_forex_data(self)-> dict:
         params = {
             'symbol': SYMBOLS,
             'access_key': os.getenv('FCSAPI')
@@ -20,8 +20,17 @@ class FcsApi:
 
         response = requests.get(FCS_URL, params=params)
         response.raise_for_status()
+
         if response.status_code != 200:
             return f'Error: {response.status_code}'
-        else:
-            return response.json()
-        
+
+        forex_data = {}
+        for currency in response.json()['response']:
+            symbol = currency['s']
+            close_price = currency['c']
+            forex_data[symbol] = close_price
+            
+        return forex_data
+
+fcsapi = FcsApi()
+print(fcsapi.get_forex_data())
