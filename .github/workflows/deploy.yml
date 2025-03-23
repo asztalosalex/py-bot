@@ -20,27 +20,41 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Set up SSH
+      - name: Set up SSH and Debug
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
+          # Setup SSH directory and keys
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
           chmod 600 ~/.ssh/id_rsa
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+          
+          # Debug information
+          echo "=== SSH Configuration ==="
+          ls -la ~/.ssh/
+          echo "=== SSH Key Fingerprint ==="
+          ssh-keygen -lf ~/.ssh/id_rsa || echo "Invalid key format"
+          echo "=== Testing SSH Connection ==="
+          ssh -v -o BatchMode=yes -o StrictHostKeyChecking=no $VPS_USERNAME@$VPS_HOST 'echo "SSH Connection Test"'
 
       - name: Deploy to VPS
+        if: success()
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: /home/alex/python/discord-bot-python
         run: |
-          # Stop the existing service
-          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl stop pybot || true'
+          echo "=== Starting Deployment ==="
+          # Try to stop service with increased verbosity
+          ssh -v $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl stop pybot || echo "Failed to stop service"'
           
-          # Deploy the code
-          rsync -avz --delete \
+          echo "=== Deploying Code ==="
+          # Deploy with verbose output
+          rsync -avvz --delete \
             --exclude '.git*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
@@ -48,27 +62,28 @@ jobs:
             --exclude '.venv' \
             ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/
           
-          # Create virtual environment if it doesn't exist
+          echo "=== Setting up Virtual Environment ==="
           ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && [ ! -d .venv ] && python3 -m venv .venv || true"
           
-          # Install/update dependencies in the virtual environment
+          echo "=== Installing Dependencies ==="
           ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && .venv/bin/pip install -r requirements.txt"
           
-          # Make sure the environment file exists (don't overwrite if exists)
-          ssh $VPS_USERNAME@$VPS_HOST "sudo [ ! -f /etc/pybot.env ] && echo 'Creating new environment file' && sudo touch /etc/pybot.env || true"
+          echo "=== Checking Environment File ==="
+          ssh $VPS_USERNAME@$VPS_HOST "sudo -n [ ! -f /etc/pybot.env ] && echo 'Creating new environment file' && sudo touch /etc/pybot.env || true"
           
-          # Restart the service
-          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl restart pybot'
+          echo "=== Restarting Service ==="
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl restart pybot || echo "Failed to restart service"'
 
       - name: Verify Deployment
+        if: success()
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
-          # Check if service is running and show last few logs
+          echo "=== Checking Service Status ==="
           ssh $VPS_USERNAME@$VPS_HOST '
             echo "Service Status:"
-            sudo systemctl status pybot --no-pager
+            sudo -n systemctl status pybot --no-pager || echo "Could not get service status"
             echo -e "\nLast 10 log lines:"
-            sudo journalctl -u pybot -n 10 --no-pager
+            sudo -n journalctl -u pybot -n 10 --no-pager || echo "Could not get logs"
           ' 
