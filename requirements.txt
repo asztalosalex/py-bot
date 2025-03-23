@@ -1,7 +1,6 @@
 discord.py
 python-dotenv
 numpy
-pyaudio
 openai
 requests
 python-dotenv
