@@ -7,9 +7,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
-    # Add permissions to limit scope
+    # Restrict permissions to minimum required
     permissions:
       contents: read
+      deployments: write
       
     steps:
       - uses: actions/checkout@v4
@@ -30,34 +31,22 @@ jobs:
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
-          # Setup SSH directory and keys
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
           chmod 600 ~/.ssh/id_ed25519
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
-          
-          # Minimal debug info without exposing keys
-          echo "=== SSH Configuration ==="
-          ls -l ~/.ssh/ | grep -v "^-" # Only show directory structure, not file contents
-          echo "=== Verifying SSH Setup ==="
-          if [ -s ~/.ssh/id_ed25519 ] && [ -s ~/.ssh/known_hosts ]; then
-            echo "✓ SSH files are set up"
-          else
-            echo "✗ SSH files are missing or empty"
-            exit 1
-          fi
+          chmod 600 ~/.ssh/known_hosts
 
       - name: Test Connection
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
-          # Test connection without verbose output
-          if ssh -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'exit 0'; then
-            echo "✓ SSH connection successful"
-          else
-            echo "✗ SSH connection failed"
+          # Test connection with strict host key checking
+          if ! ssh -o BatchMode=yes -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'exit 0'; then
+            echo "Failed to establish SSH connection"
             exit 1
           fi
 
@@ -66,10 +55,26 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: /home/alex/python/discord-bot-python
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
         run: |
+          echo "=== Verifying Deployment Path ==="
+          if ! ssh $VPS_USERNAME@$VPS_HOST "[ -d '$DEPLOY_PATH' ] && [ -w '$DEPLOY_PATH' ]"; then
+            echo "Deployment path does not exist or is not writable"
+            exit 1
+          fi
+          
           echo "=== Starting Deployment ==="
-          ssh -o BatchMode=yes $VPS_USERNAME@$VPS_HOST 'sudo systemctl stop pybot || true'
+          # Check for rsync with specific error handling
+          if ! ssh $VPS_USERNAME@$VPS_HOST 'command -v rsync > /dev/null'; then
+            echo "Installing rsync..."
+            ssh $VPS_USERNAME@$VPS_HOST 'sudo -n apt-get update && sudo -n apt-get install -y rsync'
+          fi
+          
+          echo "=== Stopping Service ==="
+          if ! ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl stop pybot'; then
+            echo "Failed to stop service"
+            exit 1
+          fi
           
           echo "=== Deploying Code ==="
           rsync -az --delete \
@@ -78,16 +83,23 @@ jobs:
             --exclude '*.pyc' \
             --exclude '.env' \
             --exclude '.venv' \
+            --exclude 'logs/' \
+            --exclude 'tmp/' \
             ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/
           
           echo "=== Setting up Virtual Environment ==="
-          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && [ ! -d .venv ] && python3 -m venv .venv || true"
-          
-          echo "=== Installing Dependencies ==="
-          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && .venv/bin/pip install -r requirements.txt"
+          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && \
+            rm -rf .venv && \
+            python3 -m venv .venv && \
+            source .venv/bin/activate && \
+            python3 -m pip install --upgrade pip && \
+            python3 -m pip install -r requirements.txt"
           
           echo "=== Managing Service ==="
-          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl restart pybot'
+          if ! ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl restart pybot'; then
+            echo "Failed to restart service"
+            exit 1
+          fi
 
       - name: Verify Deployment
         if: success()
@@ -96,9 +108,8 @@ jobs:
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
           echo "=== Checking Service Status ==="
-          if ssh $VPS_USERNAME@$VPS_HOST 'systemctl is-active --quiet pybot'; then
-            echo "✓ Service is running"
-          else
+          if ! ssh $VPS_USERNAME@$VPS_HOST 'systemctl is-active --quiet pybot'; then
             echo "✗ Service failed to start"
             exit 1
-          fi 
+          fi
+          echo "✓ Service is running" 
