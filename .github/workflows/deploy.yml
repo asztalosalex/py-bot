@@ -29,17 +29,17 @@ jobs:
         run: |
           # Setup SSH directory and keys
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
-          chmod 600 ~/.ssh/id_rsa
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
+          chmod 600 ~/.ssh/id_ed25519
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           
           # Debug information
           echo "=== SSH Configuration ==="
           ls -la ~/.ssh/
           echo "=== SSH Key Fingerprint ==="
-          ssh-keygen -lf ~/.ssh/id_rsa || echo "Invalid key format"
+          ssh-keygen -lf ~/.ssh/id_ed25519 || echo "Invalid key format"
           echo "=== Testing SSH Connection ==="
-          ssh -v -o BatchMode=yes -o StrictHostKeyChecking=no $VPS_USERNAME@$VPS_HOST 'echo "SSH Connection Test"'
+          ssh -v -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'echo "SSH Connection Test"'
 
       - name: Deploy to VPS
         if: success()
