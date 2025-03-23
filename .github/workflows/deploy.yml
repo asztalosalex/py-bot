@@ -55,26 +55,14 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: '/home/alex/python/discord-bot-python'
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
+          DEPLOY_PATH: /home/alex/python/discord-bot-python
         run: |
-          echo "=== Verifying Deployment Path ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "[ -d \"\$DEPLOY_PATH\" ] && [ -w \"\$DEPLOY_PATH\" ]"; then
-            echo "Deployment path validation failed"
-            exit 1
-          fi
-          
           echo "=== Starting Deployment ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST 'command -v rsync > /dev/null'; then
-            echo "Installing required packages..."
-            ssh $VPS_USERNAME@$VPS_HOST 'sudo -n apt-get update > /dev/null && sudo -n apt-get install -y rsync > /dev/null'
-          fi
+          # First check if rsync is installed
+          ssh $VPS_USERNAME@$VPS_HOST 'which rsync || sudo apt-get update && sudo apt-get install -y rsync'
           
-          echo "=== Managing Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop \$SERVICE_NAME > /dev/null 2>&1"; then
-            echo "Service management failed"
-            exit 1
-          fi
+          echo "=== Stopping Service ==="
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl stop pybot || true'
           
           echo "=== Deploying Code ==="
           rsync -az --delete \
@@ -83,26 +71,16 @@ jobs:
             --exclude '*.pyc' \
             --exclude '.env' \
             --exclude '.venv' \
-            --exclude 'logs/' \
-            --exclude 'tmp/' \
-            ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/ > /dev/null 2>&1
+            ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/
           
           echo "=== Setting up Virtual Environment ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "cd \$DEPLOY_PATH && \
-            rm -rf .venv && \
-            python3 -m venv .venv && \
-            source .venv/bin/activate && \
-            python3 -m pip install --upgrade pip > /dev/null && \
-            python3 -m pip install -r requirements.txt > /dev/null"; then
-            echo "Virtual environment setup failed"
-            exit 1
-          fi
+          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && [ ! -d .venv ] && python3 -m venv .venv || true"
           
-          echo "=== Restarting Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl restart \$SERVICE_NAME > /dev/null 2>&1"; then
-            echo "Service restart failed"
-            exit 1
-          fi
+          echo "=== Installing Dependencies ==="
+          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && .venv/bin/pip install -r requirements.txt"
+          
+          echo "=== Managing Service ==="
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl restart pybot'
 
       - name: Verify Deployment
         if: success()
