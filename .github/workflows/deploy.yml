@@ -1,0 +1,74 @@
+name: Deploy to VPS
+
+on:
+  push:
+    branches: [ "main" ]
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Set up Python
+        uses: actions/setup-python@v4
+        with:
+          python-version: '3.10'
+
+      - name: Install dependencies
+        run: |
+          python -m pip install --upgrade pip
+          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
+
+      - name: Set up SSH
+        env:
+          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+        run: |
+          mkdir -p ~/.ssh
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
+
+      - name: Deploy to VPS
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+        run: |
+          # Stop the existing service
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl stop pybot || true'
+          
+          # Deploy the code
+          rsync -avz --delete \
+            --exclude '.git*' \
+            --exclude '__pycache__' \
+            --exclude '*.pyc' \
+            --exclude '.env' \
+            --exclude '.venv' \
+            ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/
+          
+          # Create virtual environment if it doesn't exist
+          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && [ ! -d .venv ] && python3 -m venv .venv || true"
+          
+          # Install/update dependencies in the virtual environment
+          ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && .venv/bin/pip install -r requirements.txt"
+          
+          # Make sure the environment file exists (don't overwrite if exists)
+          ssh $VPS_USERNAME@$VPS_HOST "sudo [ ! -f /etc/pybot.env ] && echo 'Creating new environment file' && sudo touch /etc/pybot.env || true"
+          
+          # Restart the service
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl restart pybot'
+
+      - name: Verify Deployment
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+        run: |
+          # Check if service is running and show last few logs
+          ssh $VPS_USERNAME@$VPS_HOST '
+            echo "Service Status:"
+            sudo systemctl status pybot --no-pager
+            echo -e "\nLast 10 log lines:"
+            sudo journalctl -u pybot -n 10 --no-pager
+          ' 
