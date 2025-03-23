@@ -7,6 +7,10 @@ on:
 jobs:
   deploy:
     runs-on: ubuntu-latest
+    # Add permissions to limit scope
+    permissions:
+      contents: read
+      
     steps:
       - uses: actions/checkout@v4
 
@@ -20,7 +24,7 @@ jobs:
           python -m pip install --upgrade pip
           if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
-      - name: Set up SSH and Debug
+      - name: Set up SSH
         env:
           SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
           SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
@@ -33,13 +37,29 @@ jobs:
           chmod 600 ~/.ssh/id_ed25519
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           
-          # Debug information
+          # Minimal debug info without exposing keys
           echo "=== SSH Configuration ==="
-          ls -la ~/.ssh/
-          echo "=== SSH Key Fingerprint ==="
-          ssh-keygen -lf ~/.ssh/id_ed25519 || echo "Invalid key format"
-          echo "=== Testing SSH Connection ==="
-          ssh -v -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'echo "SSH Connection Test"'
+          ls -l ~/.ssh/ | grep -v "^-" # Only show directory structure, not file contents
+          echo "=== Verifying SSH Setup ==="
+          if [ -s ~/.ssh/id_ed25519 ] && [ -s ~/.ssh/known_hosts ]; then
+            echo "✓ SSH files are set up"
+          else
+            echo "✗ SSH files are missing or empty"
+            exit 1
+          fi
+
+      - name: Test Connection
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+        run: |
+          # Test connection without verbose output
+          if ssh -o BatchMode=yes -o StrictHostKeyChecking=no -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'exit 0'; then
+            echo "✓ SSH connection successful"
+          else
+            echo "✗ SSH connection failed"
+            exit 1
+          fi
 
       - name: Deploy to VPS
         if: success()
@@ -49,12 +69,10 @@ jobs:
           DEPLOY_PATH: /home/alex/python/discord-bot-python
         run: |
           echo "=== Starting Deployment ==="
-          # Try to stop service with increased verbosity
-          ssh -v $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl stop pybot || echo "Failed to stop service"'
+          ssh -o BatchMode=yes $VPS_USERNAME@$VPS_HOST 'sudo systemctl stop pybot || true'
           
           echo "=== Deploying Code ==="
-          # Deploy with verbose output
-          rsync -avvz --delete \
+          rsync -az --delete \
             --exclude '.git*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
@@ -68,11 +86,8 @@ jobs:
           echo "=== Installing Dependencies ==="
           ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && .venv/bin/pip install -r requirements.txt"
           
-          echo "=== Checking Environment File ==="
-          ssh $VPS_USERNAME@$VPS_HOST "sudo -n [ ! -f /etc/pybot.env ] && echo 'Creating new environment file' && sudo touch /etc/pybot.env || true"
-          
-          echo "=== Restarting Service ==="
-          ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl restart pybot || echo "Failed to restart service"'
+          echo "=== Managing Service ==="
+          ssh $VPS_USERNAME@$VPS_HOST 'sudo systemctl restart pybot'
 
       - name: Verify Deployment
         if: success()
@@ -81,9 +96,9 @@ jobs:
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
           echo "=== Checking Service Status ==="
-          ssh $VPS_USERNAME@$VPS_HOST '
-            echo "Service Status:"
-            sudo -n systemctl status pybot --no-pager || echo "Could not get service status"
-            echo -e "\nLast 10 log lines:"
-            sudo -n journalctl -u pybot -n 10 --no-pager || echo "Could not get logs"
-          ' 
+          if ssh $VPS_USERNAME@$VPS_HOST 'systemctl is-active --quiet pybot'; then
+            echo "✓ Service is running"
+          else
+            echo "✗ Service failed to start"
+            exit 1
+          fi 
