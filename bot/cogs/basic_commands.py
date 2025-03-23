@@ -34,7 +34,7 @@ class BasicCommands(commands.Cog):
         puuid: str = LolRequests().get_puuid(encoded_summoner_name, encoded_tag)
 
         try:
-            with open('data/summoner_names.json', 'r') as file:
+            with open('data/summoner_names.json', 'r+') as file:
                 data = json.load(file)
         except (FileNotFoundError, json.JSONDecodeError):
             data = {}
@@ -52,7 +52,7 @@ class BasicCommands(commands.Cog):
         
         # Update summoner name
         data[guild_id][member_id][f'{clean_name}#{clean_tag}'] = puuid
-        with open('data/summoner_names.json', 'w') as file:
+        with open('data/summoner_names.json', 'w+') as file:
             json.dump(data, file)
         await ctx.send(f'Summoner name {summoner_name} added to the database')
 
