@@ -19,10 +19,7 @@ class BasicCommands(commands.Cog):
             match_details: dict = LolRequests().get_match_details(match_id)
             await ctx.send(match_details)
 
-    @commands.command(name="sumpuuid")
-    async def get_sum_puuid_by_name(self, ctx, arg):
-        get_puuid = lol_requests.LolRequests()
-        await ctx.send(get_puuid.get_puuid(arg))
+   
 
     @commands.command(name="summoner", help="Add a summoner name to the database")
     async def summoner(self, ctx, *, summoner_name_and_tag: str):
