@@ -59,6 +59,7 @@ jobs:
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Verifying Deployment Path ==="
+          echo $DEPLOY_PATH
           if ! ssh $VPS_USERNAME@$VPS_HOST "[ -d \"\$DEPLOY_PATH\" ] && [ -w \"\$DEPLOY_PATH\" ]"; then
             echo "Deployment path validation failed"
             exit 1
