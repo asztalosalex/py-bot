@@ -55,11 +55,10 @@ jobs:
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          DEPLOY_PATH: '/home/alex/python/discord-bot-python'
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Verifying Deployment Path ==="
-          echo $DEPLOY_PATH
           if ! ssh $VPS_USERNAME@$VPS_HOST "[ -d \"\$DEPLOY_PATH\" ] && [ -w \"\$DEPLOY_PATH\" ]"; then
             echo "Deployment path validation failed"
             exit 1
