@@ -66,8 +66,8 @@ jobs:
           fi
           
           echo "=== Managing Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl stop pybot > /dev/null 2>&1'; then
-            echo "Service management failed"
+          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop ${SERVICE_NAME} > /dev/null 2>&1"; then
+            echo "Service stop failed"
             exit 1
           fi
           
@@ -98,7 +98,7 @@ jobs:
           fi
           
           echo "=== Restarting Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST 'sudo -n systemctl restart pybot > /dev/null 2>&1'; then
+          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl restart ${SERVICE_NAME} > /dev/null 2>&1"; then
             echo "Service restart failed"
             exit 1
           fi
@@ -111,8 +111,13 @@ jobs:
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Checking Service Status ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "systemctl is-active --quiet \$SERVICE_NAME"; then
-            echo "✗ Service failed to start"
+          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl status ${SERVICE_NAME}"; then
+            echo "✗ Service failed to start - checking logs"
+            ssh $VPS_USERNAME@$VPS_HOST "sudo -n journalctl -u ${SERVICE_NAME} --no-pager -n 20"
+            exit 1
+          fi
+          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl is-active ${SERVICE_NAME}"; then
+            echo "✗ Service is not running"
             exit 1
           fi
           echo "✓ Service is running" 
