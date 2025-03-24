@@ -25,5 +25,5 @@ class DataManager:
 
     def save_data(self, data: dict[str, str]) -> None:
         """Save data to the JSON file."""
-        with open(self.file_path, 'w') as f:
+        with open(self.file_path, 'w+') as f:
             json.dump(data, f, indent=4)
