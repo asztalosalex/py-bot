@@ -72,7 +72,7 @@ jobs:
           fi
           
           echo "=== Deploying Code ==="
-          rsync -az --delete \
+          if ! rsync -azv --delete \
             --exclude '.git*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
@@ -80,7 +80,11 @@ jobs:
             --exclude '.venv' \
             --exclude 'logs/' \
             --exclude 'tmp/' \
-            ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/ > /dev/null 2>&1
+            ./ $VPS_USERNAME@$VPS_HOST:$DEPLOY_PATH/; then
+            echo "Deployment failed - checking directory permissions"
+            ssh $VPS_USERNAME@$VPS_HOST "ls -la \$(dirname $DEPLOY_PATH); ls -la $DEPLOY_PATH 2>/dev/null || echo 'Cannot access target directory'"
+            exit 1
+          fi
           
           echo "=== Setting up Virtual Environment ==="
           if ! ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && \
