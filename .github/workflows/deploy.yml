@@ -111,8 +111,13 @@ jobs:
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Checking Service Status ==="
+          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl status ${SERVICE_NAME}"; then
+            echo "✗ Service failed to start - checking logs"
+            ssh $VPS_USERNAME@$VPS_HOST "sudo -n journalctl -u ${SERVICE_NAME} --no-pager -n 20"
+            exit 1
+          fi
           if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl is-active ${SERVICE_NAME}"; then
-            echo "✗ Service failed to start"
+            echo "✗ Service is not running"
             exit 1
           fi
           echo "✓ Service is running" 
