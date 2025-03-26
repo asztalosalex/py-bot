@@ -1,9 +1,14 @@
+from logging import Logger
 import requests
 import os
 from dotenv import load_dotenv
 import json
+from .exceptions import SummonerNotFoundError, RiotApiError, RateLimitError
+from logger import setup_logger
 
 load_dotenv()
+
+logger = setup_logger('lol.lol_requests')
 
 class LolRequests:
 
@@ -17,8 +22,13 @@ class LolRequests:
         response = requests.get(url, headers={'X-Riot-Token': self.api_key})
         if response.status_code == 200:
             return response.json()['puuid']
+        elif response.status_code == 404:
+            logger.warning(f'Summoner name not found: {summoner_name}#{tag}')
+            raise SummonerNotFoundError(f'Summoner name not found: {summoner_name}#{tag}')
+        elif response.status_code == 429:
+            raise RateLimitError('Rate limit has reached')
         else:
-            raise Exception(f"Failed to fetch PUUID for {summoner_name}. \n Status code is: {response.status_code}\n Request url: {url}")
+            raise RiotApiError(f'API hiba: {response.status_code}')
         
     def get_match_history(self, puuid)->list:
         url = f"https://{self.REGION}.api.riotgames.com/lol/match/v5/matches/by-puuid/{puuid}/ids"
