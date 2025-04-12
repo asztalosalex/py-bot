@@ -2,7 +2,7 @@ name: Deploy to VPS
 
 on:
   push:
-    branches: [ "main" ]
+    branches: ["main"]
 
 jobs:
   deploy:
@@ -11,19 +11,9 @@ jobs:
     permissions:
       contents: read
       deployments: write
-      
+
     steps:
       - uses: actions/checkout@v4
-
-      - name: Set up Python
-        uses: actions/setup-python@v4
-        with:
-          python-version: '3.10'
-
-      - name: Install dependencies
-        run: |
-          python -m pip install --upgrade pip
-          if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
 
       - name: Set up SSH
         env:
@@ -64,13 +54,13 @@ jobs:
             echo "Installing required packages..."
             ssh $VPS_USERNAME@$VPS_HOST 'sudo -n apt-get update > /dev/null && sudo -n apt-get install -y rsync > /dev/null'
           fi
-          
+
           echo "=== Managing Service ==="
           if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop ${SERVICE_NAME} > /dev/null 2>&1"; then
             echo "Service stop failed"
             exit 1
           fi
-          
+
           echo "=== Deploying Code ==="
           if ! rsync -azv --delete \
             --exclude '.git*' \
@@ -85,7 +75,7 @@ jobs:
             ssh $VPS_USERNAME@$VPS_HOST "ls -la \$(dirname $DEPLOY_PATH); ls -la $DEPLOY_PATH 2>/dev/null || echo 'Cannot access target directory'"
             exit 1
           fi
-          
+
           echo "=== Setting up Virtual Environment ==="
           if ! ssh $VPS_USERNAME@$VPS_HOST "cd $DEPLOY_PATH && \
             rm -rf .venv && \
@@ -96,7 +86,7 @@ jobs:
             echo "Virtual environment setup failed"
             exit 1
           fi
-          
+
           echo "=== Restarting Service ==="
           if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl restart ${SERVICE_NAME} > /dev/null 2>&1"; then
             echo "Service restart failed"
@@ -117,4 +107,4 @@ jobs:
             echo "✗ Service status check failed"
             ssh $VPS_USERNAME@$VPS_HOST "sudo -n journalctl -u ${SERVICE_NAME} --no-pager -n 20" || true
             exit 1
-          fi 
+          fi
