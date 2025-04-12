@@ -2,9 +2,7 @@ FROM python:3.12-bullseye
 
 WORKDIR /app
 
-RUN apt-get update && apt-get install -y \
-    portaudio19-dev \
-    python3-pyaudio \
+RUN apt-get update \
     && rm -rf /var/lib/apt/lists/*
 
 COPY . .
