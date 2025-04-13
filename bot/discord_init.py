@@ -11,13 +11,13 @@ class DiscordBot(commands.Bot):
         self.token = os.getenv('DC_TOKEN')
         if not self.token:
             raise ValueError("No DC_TOKEN found in")
-        
+
         print("Initializing bot...")
         intents = discord.Intents.default()
         intents.message_content = True
         intents.presences = True
         intents.members = True
-        super().__init__(command_prefix='!', intents=intents, description='test')
+        super().__init__(command_prefix='!', intents=intents, description='pybot')
         self.bot = self.run_bot()
 
     async def setup_hook(self):
@@ -30,15 +30,15 @@ class DiscordBot(commands.Bot):
         print(f'Channel {before.name} updated to {after.name}')
 
     async def on_presence_update(self, before, after):
-        
+
         if before.activity is None and after.activity is not None:
             await self.get_channel(1201609666099150980).send(f'{after.name} started playing {after.activity.name}')
-        
+
         elif before.activity is not None and after.activity is None:
             await self.get_channel(1201609666099150980).send(f'{after.name} stopped playing {before.activity.name}')
-        
-        elif (before.activity and after.activity and 
-              before.activity.details != after.activity.details and 
+
+        elif (before.activity and after.activity and
+              before.activity.details != after.activity.details and
               after.activity.details is not None):
             lol_requests = LolRequests()
             summoner_name: str = lol_requests.get_summoner_name_by_member_id(after.id)
@@ -57,8 +57,8 @@ class DiscordBot(commands.Bot):
         for guild in self.guilds:
             print(f'- {guild.name} (ID: {guild.id})')
         print('Bot is ready for commands!')
-        
+        await self.get_channel(1201609666099150980).send('Megjöttem')
+
 
     def run_bot(self):
         self.run(self.token)
-
