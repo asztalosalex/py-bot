@@ -78,15 +78,24 @@ jobs:
 
       - name: Build Docker Image on VPS
         if: success()
+        env:
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Build Docker image on VPS ==="
-          ssh $VPS_USERNAME@$VPS_HOST << 'EOF'
+          ssh -o StrictHostKeyChecking=no $VPS_USERNAME@$VPS_HOST "bash -s" <<EOF
+            set -e
+            echo "Stopping old container..."
             docker stop pybot 2>/dev/null || echo "No running container to stop"
             docker ps -a --filter ancestor=pybot -q | xargs -r docker rm -f
             docker rmi -f pybot 2>/dev/null || echo "Image not found"
+            echo "Building Docker image..."
             cd $DEPLOY_PATH
             docker build --no-cache -t pybot .
-            sudo systemctl restart ${SERVICE_NAME}
+            echo "Restarting service..."
+            sudo systemctl restart $SERVICE_NAME
           EOF
 
       - name: Verify Deployment
