@@ -57,7 +57,7 @@ class DiscordBot(commands.Bot):
         for guild in self.guilds:
             print(f'- {guild.name} (ID: {guild.id})')
         print('Bot is ready for commands!')
-        await self.get_channel(1201609666099150980).send('Megjöttem')
+        await self.get_channel(1201609666099150980).send('Jó napot!')
 
 
     def run_bot(self):

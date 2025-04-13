@@ -76,29 +76,18 @@ jobs:
             exit 1
           fi
 
-          echo "=== Remove old Docker image ==="
-
-          docker stop pybot 2>/dev/null || echo "No running container to stop"
-          docker ps -a --filter ancestor=pybot -q | xargs -r docker rm -f
-
-          if docker rmi -f pybot 2>/dev/null; then
-            echo "Old image 'pybot' removed"
-          else
-            echo "Docker image 'pybot' not found"
-          fi
-
-          echo "=== Build new image ==="
-
-          if ! docker build --no-cache -t pybot .; then
-            echo "Docker image build failed"
-            exit 1
-          fi
-
-          echo "=== Restarting Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl restart ${SERVICE_NAME} > /dev/null 2>&1"; then
-            echo "Service restart failed"
-            exit 1
-          fi
+      - name: Build Docker Image on VPS
+        if: success()
+        run: |
+          echo "=== Build Docker image on VPS ==="
+          ssh $VPS_USERNAME@$VPS_HOST << 'EOF'
+            docker stop pybot 2>/dev/null || echo "No running container to stop"
+            docker ps -a --filter ancestor=pybot -q | xargs -r docker rm -f
+            docker rmi -f pybot 2>/dev/null || echo "Image not found"
+            cd $DEPLOY_PATH
+            docker build --no-cache -t pybot .
+            sudo systemctl restart ${SERVICE_NAME}
+          EOF
 
       - name: Verify Deployment
         if: success()
