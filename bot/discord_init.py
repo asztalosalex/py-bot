@@ -94,8 +94,6 @@ class DiscordBot(commands.Bot):
         for guild in self.guilds:
             print(f'- {guild.name} (ID: {guild.id})')
         self.update_channel_name.start()
-        channel_id = await self.create_voice_channel('test')
-        print(f'Created voice channel ID: {channel_id.id}')
 
     def run_bot(self):
     
