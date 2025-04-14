@@ -31,6 +31,3 @@ class FcsApi:
             forex_data[symbol] = close_price
             
         return forex_data
-
-fcsapi = FcsApi()
-print(fcsapi.get_forex_data())
