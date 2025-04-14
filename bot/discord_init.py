@@ -25,7 +25,7 @@ class DiscordBot(commands.Bot):
         self.activity_channel_id = 1201609666099150980
         self.price1_channel_id = 1361426887053807778
         self.price2_channel_id = 1361426926060699920
-        self.price3_channel_id = 1361426975071145994
+        self.price3_channel_id = 1361428367324479731
 
     async def setup_hook(self):
         """This is called when the bot starts up"""
