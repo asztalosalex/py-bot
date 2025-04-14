@@ -20,8 +20,6 @@ class DiscordBot(commands.Bot):
         intents.message_content = True
         intents.presences = True
         intents.members = True
-        intents.voice_states = True
-        intents.voice_channels = True
         super().__init__(command_prefix='!', intents=intents, description='pybot')
         
         self.activity_channel_id = 1201609666099150980
