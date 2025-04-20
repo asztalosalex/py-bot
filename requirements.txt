@@ -4,3 +4,5 @@ numpy
 openai
 requests
 python-dotenv
+pysimplesoap
+xml
