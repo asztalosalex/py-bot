@@ -6,7 +6,8 @@ from lol.lol_requests import LolRequests
 from discord.ext import tasks
 import random
 import logging
-from fcs_api.api_call import FcsApi
+from mnb.soap_client import getCurrencyRate
+
 class DiscordBot(commands.Bot):
 
     def __init__(self):
@@ -23,9 +24,9 @@ class DiscordBot(commands.Bot):
         super().__init__(command_prefix='!', intents=intents, description='pybot')
         
         self.activity_channel_id = 1201609666099150980
-        self.price1_channel_id = 1361426887053807778
-        self.price2_channel_id = 1361426926060699920
-        self.price3_channel_id = 1361428367324479731
+        self.price1_channel_id = 1363559409615372359
+        self.price2_channel_id = 1363559630747472083
+        self.price3_channel_id = 1363559739190939869
 
     async def setup_hook(self):
         """This is called when the bot starts up"""
@@ -69,21 +70,35 @@ class DiscordBot(commands.Bot):
 
     @tasks.loop(minutes=5)
     async def update_channel_name(self):
+        mnb_data = getCurrencyRate()
+        usd_rate = str(mnb_data.getActual('USD'))
+        eur_rate = str(mnb_data.getActual('EUR'))
+        gbp_rate = str(mnb_data.getActual('GBP'))
+
         try:
             channel1 = self.get_channel(self.price1_channel_id)
             channel2 = self.get_channel(self.price2_channel_id)
             channel3 = self.get_channel(self.price3_channel_id)
-            fcsapi = FcsApi()
-            data: dict = fcsapi.get_forex_data()
-            for key, value in data.items():
-                if key == 'EUR/HUF':
-                    await channel1.edit(name=f'{key} - {value} Ft')
-                elif key == 'USD/HUF':
-                    await channel2.edit(name=f'{key} - {value} Ft')
-                elif key == 'GBP/HUF':
-                    await channel3.edit(name=f'{key} - {value} Ft')
+
+            if not channel1 or not channel2 or not channel3:
+                print(f"One or more channels not found. Channel1: {channel1}, Channel2: {channel2}, Channel3: {channel3}")
+                return
+            
+            await channel1.edit(name=f'EUR - {eur_rate} Ft')
+            await channel2.edit(name=f'USD - {usd_rate} Ft')
+            await channel3.edit(name=f'GBP - {gbp_rate} Ft')
+            
+            print(f"Successfully updated channel names")
+
+        except discord.Forbidden as e:
+            print(f"Permission error: {e}")
+            print(f"Bot permissions in channel1: {channel1.permissions_for(channel1.guild.me)}")
         except Exception as e:
             print(f"Error in update_channel_name: {e}")
+            print(f"Channel1 exists: {bool(channel1)}")
+            if channel1:
+                print(f"Channel1 guild: {channel1.guild.name}")
+                print(f"Channel1 permissions: {channel1.permissions_for(channel1.guild.me)}")
 
     async def on_ready(self):
         print(f'Successfully logged in as {self.user}')
