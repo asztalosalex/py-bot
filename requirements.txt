@@ -5,4 +5,4 @@ openai
 requests
 python-dotenv
 pysimplesoap
-elevenlabs
+pynacl
