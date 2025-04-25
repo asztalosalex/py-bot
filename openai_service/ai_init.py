@@ -61,6 +61,21 @@ class AiInit:
         
         except Exception as e:
             print(f"Error whlie request for images: {str(e)}")
+
+    def greet_user(self, user_name: str):
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[
+                    {"role": "system", "content": "Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
+                    {"role": "user", "content": f"Üdvözöld {user_name} magyarul."}
+                ]
+            )
+            return response.choices[0].message.content
+        
+        except Exception as e:
+            print(f"Error while greeting user: {str(e)}")
+            return None
         
 
 

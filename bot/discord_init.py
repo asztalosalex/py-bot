@@ -7,6 +7,10 @@ from discord.ext import tasks
 import random
 import logging
 from mnb.soap_client import getCurrencyRate
+import asyncio
+import openai
+from openai_service.ai_init import AiInit
+from tts.tts import TTS
 
 class DiscordBot(commands.Bot):
 
@@ -27,6 +31,7 @@ class DiscordBot(commands.Bot):
         self.price1_channel_id = 1363559409615372359
         self.price2_channel_id = 1363559630747472083
         self.price3_channel_id = 1363559739190939869
+        
 
     async def setup_hook(self):
         """This is called when the bot starts up"""
@@ -39,6 +44,46 @@ class DiscordBot(commands.Bot):
 
     async def on_guild_channel_update(self, before, after):
         print(f'Channel {before.name} updated to {after.name}')
+
+    async def on_voice_state_update(self, member, before, after):
+        try:
+            # Check if the user joined a voice channel
+            if before.channel is None and after.channel is not None:
+                print(f"{member.name} joined the voice channel: {after.channel.name}")
+                if member.name != "Gyula":
+                    
+                    ai_init = AiInit()
+                    greeting_text = ai_init.greet_user(member.name)
+                    tts = TTS()
+                    audio_stream = tts.generate_audio(greeting_text)
+                    
+                    
+                    temp_file = f"{member.name}_joined_voice_channel.mp3"
+                    with open(temp_file, "wb") as f:
+                        for chunk in audio_stream:
+                            f.write(chunk)
+                    
+                    channel = member.voice.channel
+                    voice = await channel.connect()
+                    
+                    voice.play(discord.FFmpegPCMAudio(temp_file))
+                
+                    while voice.is_playing():
+                        await asyncio.sleep(1)
+                        
+                    await voice.disconnect()
+                    os.remove(temp_file)
+
+            
+            elif before.channel is not None and after.channel is None:
+                print(f"{member.name} left the voice channel: {before.channel.name}")
+                
+            elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
+                print(f"{member.name} moved from {before.channel.name} to {after.channel.name}")
+        except Exception as e:
+            print(f"Error in on_voice_state_update: {e}")
+            import traceback
+            traceback.print_exc()
 
     async def on_presence_update(self, before, after):
         try:
@@ -99,6 +144,7 @@ class DiscordBot(commands.Bot):
             if channel1:
                 print(f"Channel1 guild: {channel1.guild.name}")
                 print(f"Channel1 permissions: {channel1.permissions_for(channel1.guild.me)}")
+
 
     async def on_ready(self):
         print(f'Successfully logged in as {self.user}')
