@@ -7,7 +7,7 @@ load_dotenv()
 
 class TTS:
 
-    VOICE_ID = "TxGEqnHWrfWFTfGW9XjX"
+    VOICE_ID = "knrPHWnBmmDHMoiMeP3l"
     MODEL_ID = "eleven_turbo_v2_5"
     API_KEY = os.getenv('ELEVENLABS_API_KEY')
     VOICE_SETTINGS = {
