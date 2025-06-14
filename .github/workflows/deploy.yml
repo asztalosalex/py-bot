@@ -25,8 +25,8 @@ jobs:
           SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           mkdir -p ~/.ssh
-          echo "$SSH_PRIVATE_KEY" > ~/.ssh/id_ed25519
-          chmod 600 ~/.ssh/id_ed25519
+          echo "$SSH_PRIVATE_KEY" > ~/.ssh/gitcicd
+          chmod 600 ~/.ssh/gitcicd
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
@@ -35,7 +35,7 @@ jobs:
           VPS_HOST: ${{ secrets.VPS_HOST }}
           VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
-          if ! ssh -o BatchMode=yes -i ~/.ssh/id_ed25519 $VPS_USERNAME@$VPS_HOST 'exit 0'; then
+          if ! ssh -o BatchMode=yes -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST 'exit 0'; then
             echo "Failed to establish SSH connection"
             exit 1
           fi
