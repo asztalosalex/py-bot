@@ -50,19 +50,19 @@ jobs:
         run: |
           echo "=== Starting Deployment ==="
           # Check for rsync
-          if ! ssh $VPS_USERNAME@$VPS_HOST 'command -v rsync > /dev/null'; then
+          if ! ssh -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST 'command -v rsync > /dev/null'; then
             echo "Installing required packages..."
             ssh $VPS_USERNAME@$VPS_HOST 'sudo -n apt-get update > /dev/null && sudo -n apt-get install -y rsync > /dev/null'
           fi
 
           echo "=== Managing Service ==="
-          if ! ssh $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop ${SERVICE_NAME} > /dev/null 2>&1"; then
+          if ! ssh -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop ${SERVICE_NAME} > /dev/null 2>&1"; then
             echo "Service stop failed"
             exit 1
           fi
 
           echo "=== Deploying Code ==="
-          if ! rsync -azv --delete \
+          if !rsync -azv -e "ssh -i ~/.ssh/gitcicd -o StrictHostKeyChecking=no" --delete \
             --exclude '.git*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
