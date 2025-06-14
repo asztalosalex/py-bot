@@ -30,6 +30,17 @@ jobs:
           echo "$SSH_KNOWN_HOSTS" > ~/.ssh/known_hosts
           chmod 600 ~/.ssh/known_hosts
 
+      - name: Debug SSH key + connect
+        run: |
+          echo "🔐 Debug: SSH key first lines:"
+          head -n 5 ~/.ssh/gitcicd
+
+          echo "🔌 Connecting with verbose SSH:"
+          ssh -vvv -o StrictHostKeyChecking=no -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST "echo ✅ Connected"
+        env:
+          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+          VPS_HOST: ${{ secrets.VPS_HOST }}
+
       - name: Test Connection
         env:
           VPS_HOST: ${{ secrets.VPS_HOST }}
