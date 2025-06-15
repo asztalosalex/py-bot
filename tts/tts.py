@@ -20,7 +20,6 @@ class TTS:
     def __init__(self):
         self.eleven_labs = ElevenLabs(api_key=self.API_KEY)
 
-
     def generate_audio(self, text: str): 
         audio_stream = self.eleven_labs.text_to_speech.convert(
                         text=text,
