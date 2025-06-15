@@ -42,9 +42,6 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             print(f"Error loading extensions: {e}")
 
-    async def on_guild_channel_update(self, before, after):
-        print(f'Channel {before.name} updated to {after.name}')
-
     async def on_voice_state_update(self, member, before, after):
         try:
             # Check if the user joined a voice channel

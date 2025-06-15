@@ -13,7 +13,6 @@ class TTS:
     VOICE_SETTINGS = {
         "stability": 0.5, 
         "similarity_boost": 0.5, 
-        "style": 0.1, 
         "use_speaker_boost": True, 
         "speed": 0.9
     }

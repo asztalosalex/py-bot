@@ -10,7 +10,7 @@ class AiInit:
         self.client = self._initialize_client()
 
     def _initialize_client(self) -> OpenAI:
-        """Initialize OpenAI client with API credentials."""
+
         api_key = os.getenv("OPENAI_KEY")
         if not api_key:
             raise ValueError("OPENAI_KEY not found in environment variables")
@@ -21,16 +21,7 @@ class AiInit:
         )
 
     def send_request_to_ai(self, request_from_user: str, conversation_history: list) -> Optional[str]:
-        """
-        Send a request to OpenAI API and return the response.
-        
-        Args:
-            request_from_user: The user's input message
-            conversation_history: List of previous messages in the conversation
-            
-        Returns:
-            The AI's response text or None if there's an error
-        """
+     
         try:
             messages = conversation_history + [
                 {"role": "user", "content": request_from_user}
@@ -67,8 +58,8 @@ class AiInit:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
-                    {"role": "user", "content": f"Üdvözöld {user_name} magyarul."}
+                    {"role": "system", "content": "Te vagy a mukulás. Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
+                    {"role": "user", "content": f"Üdvözöld {user_name}."}
                 ]
             )
             return response.choices[0].message.content
