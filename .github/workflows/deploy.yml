@@ -62,7 +62,7 @@ jobs:
           fi
 
           echo "=== Deploying Code ==="
-          if !rsync -azv -e "ssh -i ~/.ssh/gitcicd -o StrictHostKeyChecking=no" --delete \
+          if ! rsync -azv -e "ssh -i ~/.ssh/gitcicd -o StrictHostKeyChecking=no" --delete \
             --exclude '.git*' \
             --exclude '__pycache__' \
             --exclude '*.pyc' \
