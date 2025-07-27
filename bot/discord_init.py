@@ -42,7 +42,7 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             print(f"Error loading extensions: {e}")
 
-     async def on_voice_state_update(self, member, before, after):
+    async def on_voice_state_update(self, member, before, after):
         try:
             if before.channel is None and after.channel is not None:
                 print(f"{member.name} joined the voice channel: {after.channel.name}")
@@ -86,12 +86,11 @@ class DiscordBot(commands.Bot):
 
                     await voice.disconnect()
                     os.remove(temp_file)
+                elif before.channel is not None and after.channel is None:
+                    print(f"{member.name} left the voice channel: {before.channel.name}")
 
-            elif before.channel is not None and after.channel is None:
-                print(f"{member.name} left the voice channel: {before.channel.name}")
-
-            elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
-                print(f"{member.name} moved from {before.channel.name} to {after.channel.name}")
+                elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
+                    print(f"{member.name} moved from {before.channel.name} to {after.channel.name}")
         except Exception as e:
             print(f"Error in on_voice_state_update: {e}")
             import traceback
