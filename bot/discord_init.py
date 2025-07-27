@@ -42,9 +42,8 @@ class DiscordBot(commands.Bot):
         except Exception as e:
             print(f"Error loading extensions: {e}")
 
-    async def on_voice_state_update(self, member, before, after):
+     async def on_voice_state_update(self, member, before, after):
         try:
-            # Check if the user joined a voice channel
             if before.channel is None and after.channel is not None:
                 print(f"{member.name} joined the voice channel: {after.channel.name}")
                 if member.name != "Gyula":
@@ -53,28 +52,44 @@ class DiscordBot(commands.Bot):
                     greeting_text = ai_init.greet_user(member.name)
                     tts = TTS()
                     audio_stream = tts.generate_audio(greeting_text)
-                    
-                    
+
                     temp_file = f"{member.name}_joined_voice_channel.mp3"
                     with open(temp_file, "wb") as f:
                         for chunk in audio_stream:
                             f.write(chunk)
                     
                     channel = member.voice.channel
-                    voice = await channel.connect()
+                    voice = await channel.connect(reconnect=False)
                     
-                    voice.play(discord.FFmpegPCMAudio(temp_file))
-                
+                    # Wait until connected or timeout
+                    for _ in range(10):  # up to 5 seconds
+                        if voice.is_connected():
+                            break
+                        await asyncio.sleep(0.5)
+
+                    if not voice.is_connected():
+                        print("Voice client failed to connect after timeout.")
+                        os.remove(temp_file)
+                        return
+
+                    # Now safe to play
+                    try:
+                        voice.play(discord.FFmpegPCMAudio(temp_file))
+                    except discord.ClientException as e:
+                        print(f"Failed to play audio: {e}")
+                        await voice.disconnect()
+                        os.remove(temp_file)
+                        return
+
                     while voice.is_playing():
                         await asyncio.sleep(1)
-                        
+
                     await voice.disconnect()
                     os.remove(temp_file)
 
-            
             elif before.channel is not None and after.channel is None:
                 print(f"{member.name} left the voice channel: {before.channel.name}")
-                
+
             elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
                 print(f"{member.name} moved from {before.channel.name} to {after.channel.name}")
         except Exception as e:
