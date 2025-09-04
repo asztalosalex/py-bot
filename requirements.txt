@@ -3,3 +3,4 @@ python-dotenv
 openai
 requests
 elevenlabs
+yt-dlp

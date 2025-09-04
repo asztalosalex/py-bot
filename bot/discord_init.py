@@ -22,16 +22,12 @@ class DiscordBot(commands.Bot):
         intents.members = True
         super().__init__(command_prefix='!', intents=intents, description='pybot')
         
-        self.activity_channel_id = 1201609666099150980
-        self.price1_channel_id = 1363559409615372359
-        self.price2_channel_id = 1363559630747472083
-        self.price3_channel_id = 1363559739190939869
-        
 
     async def setup_hook(self):
         """This is called when the bot starts up"""
         try:
             await self.load_extension('bot.cogs.ai_handler')
+            await self.load_extension('bot.cogs.music')
             print("Extensions loaded successfully")
         except Exception as e:
             print(f"Error loading extensions: {e}")

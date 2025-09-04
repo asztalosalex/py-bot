@@ -58,7 +58,7 @@ class AiInit:
             response = self.client.chat.completions.create(
                 model="gpt-4o-mini",
                 messages=[
-                    {"role": "system", "content": "Te vagy a mukulás. Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
+                    {"role": "system", "content": "Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
                     {"role": "user", "content": f"Üdvözöld {user_name}."}
                 ]
             )
