@@ -31,7 +31,6 @@ class DiscordBot(commands.Bot):
     async def setup_hook(self):
         """This is called when the bot starts up"""
         try:
-            await self.load_extension('bot.cogs.basic_commands')
             await self.load_extension('bot.cogs.ai_handler')
             print("Extensions loaded successfully")
         except Exception as e:

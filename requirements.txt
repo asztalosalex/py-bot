@@ -1,9 +1,5 @@
 discord.py[voice] @ git+https://github.com/Rapptz/discord.py@master
 python-dotenv
-numpy
 openai
 requests
-python-dotenv
-pysimplesoap
-pynacl
 elevenlabs
