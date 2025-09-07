@@ -43,7 +43,8 @@ class GuildMusicState:
     async def player_loop(self):
         while True:
             try:
-                item = await self.queue.get()
+                # Wait for next item with an idle timeout; disconnect if idle
+                item = await asyncio.wait_for(self.queue.get(), timeout=60)
                 self.current = item
                 title, stream_url = item
                 if not self.voice or not self.voice.is_connected():
@@ -57,11 +58,19 @@ class GuildMusicState:
                     await asyncio.sleep(0.5)
 
                 self.current = None
+            except asyncio.TimeoutError:
+                # No new items for a while; leave if not playing/paused
+                if self.voice and self.voice.is_connected() and not (
+                    self.voice.is_playing() or self.voice.is_paused()
+                ):
+                    await self.voice.disconnect()
+                break
             except asyncio.CancelledError:
                 break
             except Exception:
                 self.current = None
                 await asyncio.sleep(0.5)
+
 
 
 class Music(commands.Cog):
@@ -75,7 +84,7 @@ class Music(commands.Cog):
             state = GuildMusicState(self.bot)
             self.guild_states[guild.id] = state
         return state
-
+    
     async def ensure_connected(self, ctx: commands.Context) -> GuildMusicState:
         if not ctx.author.voice or not ctx.author.voice.channel:
             raise commands.CommandError("Csatlakozz egy hangcsatornához előbb.")
@@ -89,7 +98,7 @@ class Music(commands.Cog):
         state = await self.ensure_connected(ctx)
         await ctx.reply(f"Csatlakoztam: {state.voice.channel.name}")
 
-    @commands.command(name="leave", aliases=["disconnect"], description="Lecsatlakozik a hangcsatornához") 
+    @commands.command(name="leave", aliases=["disconnect"], description="Lecsatlakozik a hangcsatornáról") 
     async def leave(self, ctx: commands.Context):
         state = self.get_state(ctx.guild)
         if state.voice and state.voice.is_connected():
