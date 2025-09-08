@@ -5,6 +5,8 @@ from typing import Deque, Dict, Optional, Tuple
 
 import discord
 from discord.ext import commands
+from openai_service.ai_init import AiInit
+from tts.tts import TTS
 
 try:
     import yt_dlp as ytdlp
@@ -34,6 +36,7 @@ class GuildMusicState:
         self.player_task: Optional[asyncio.Task] = None
         self.voice: Optional[discord.VoiceClient] = None
         self.lock = asyncio.Lock()
+        self.text_channel: Optional[discord.abc.Messageable] = None
 
     async def ensure_player(self):
         async with self.lock:
@@ -44,7 +47,7 @@ class GuildMusicState:
         while True:
             try:
                 # Wait for next item with an idle timeout; disconnect if idle
-                item = await asyncio.wait_for(self.queue.get(), timeout=60)
+                item = await asyncio.wait_for(self.queue.get(), timeout=10)
                 self.current = item
                 title, stream_url = item
                 if not self.voice or not self.voice.is_connected():
@@ -63,6 +66,40 @@ class GuildMusicState:
                 if self.voice and self.voice.is_connected() and not (
                     self.voice.is_playing() or self.voice.is_paused()
                 ):
+                    ai_init = AiInit()
+                    goodbye_text: str = ai_init.say_goodbye_when_bot_leaves()
+                    try:
+                        tts = TTS()
+                        audio_stream = tts.generate_audio(goodbye_text)
+                        temp_file = "goodbye.mp3"
+                        with open(temp_file, "wb") as f:
+                            for chunk in audio_stream:
+                                f.write(chunk)
+                        # slight delay to ensure voice is ready
+                        await asyncio.sleep(0.1)
+                        self.voice.play(discord.FFmpegPCMAudio(temp_file))
+                        # wait while playing, guard with max ~20s
+                        for _ in range(40):
+                            if not self.voice.is_playing():
+                                break
+                            await asyncio.sleep(0.5)
+                    except Exception as e:
+                        try:
+                            channel = None
+                            if self.text_channel is not None:
+                                channel = self.text_channel
+                            elif self.voice and self.voice.channel and self.voice.channel.guild.system_channel:
+                                channel = self.voice.channel.guild.system_channel
+                            if channel is not None:
+                                await channel.send(goodbye_text)
+                        except Exception:
+                            pass
+                    finally:
+                        try:
+                            if os.path.exists("goodbye.mp3"):
+                                os.remove("goodbye.mp3")
+                        except Exception:
+                            pass
                     await self.voice.disconnect()
                 break
             except asyncio.CancelledError:
@@ -91,7 +128,11 @@ class Music(commands.Cog):
         state = self.get_state(ctx.guild)
         if not state.voice or not state.voice.is_connected():
             state.voice = await ctx.author.voice.channel.connect(reconnect=True)
+        # Remember the text channel to send messages like goodbye
+        state.text_channel = ctx.channel
         return state
+
+
 
     @commands.command(name="join", description="Csatlakozik a hangcsatornához")
     async def join(self, ctx: commands.Context):
@@ -186,6 +227,7 @@ class Music(commands.Cog):
         if not description:
             description = ["Üres a sor."]
         await ctx.reply("\n".join(description))
+        
 
 
 async def setup(bot: commands.Bot):

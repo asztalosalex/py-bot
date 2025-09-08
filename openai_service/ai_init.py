@@ -67,6 +67,18 @@ class AiInit:
         except Exception as e:
             print(f"Error while greeting user: {str(e)}")
             return None
+
+
+    def say_goodbye_when_bot_leaves(self)->Optional[str]:
+        try:
+            response = self.client.chat.completions.create(
+                model="gpt-4o-mini",
+                messages=[{"role": "system", "content": "Köszönj el a hangcsatornán lévő emberektől, ha már nem játszol zenét."}]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error while saying goodbye when bot leaves: {str(e)}")
+            return None
         
 
 

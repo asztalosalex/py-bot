@@ -35,7 +35,6 @@ class DiscordBot(commands.Bot):
     async def on_voice_state_update(self, member, before, after):
         try:
             if before.channel is None and after.channel is not None:
-                print(f"{member.name} joined the voice channel: {after.channel.name}")
                 if member.name != "Gyula":
                     
                     ai_init = AiInit()
