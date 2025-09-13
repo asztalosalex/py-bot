@@ -5,6 +5,9 @@ from typing import Optional
 
 load_dotenv()
 
+MODEL: str = "gpt-4o-mini"
+IMAGE_MODEL: str = "dall-e-3"
+
 class AiInit:
     def __init__(self):
         self.client = self._initialize_client()
@@ -28,7 +31,7 @@ class AiInit:
             ]
             
             completion = self.client.chat.completions.create(
-                model="gpt-4",
+                model=MODEL,
                 messages=messages
             )
             
@@ -43,7 +46,7 @@ class AiInit:
 
         try:
             response = self.client.images.generate(
-            model="dall-e-3",
+            model=IMAGE_MODEL,
             prompt= request_from_user,
             n=1,
             size="1024x1024"
@@ -56,7 +59,7 @@ class AiInit:
     def greet_user(self, user_name: str):
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=MODEL,
                 messages=[
                     {"role": "system", "content": "Üdvözöld a felhasználót. A felhasználó nevében a számot ne használd. Csak a nevét használd. Ha a nevében angol szó van, akkor fordítsd le magyarra."},
                     {"role": "user", "content": f"Üdvözöld {user_name}."}
@@ -72,7 +75,7 @@ class AiInit:
     def say_goodbye_when_bot_leaves(self)->Optional[str]:
         try:
             response = self.client.chat.completions.create(
-                model="gpt-4o-mini",
+                model=MODEL,
                 messages=[{"role": "system", "content": "Köszönj el a hangcsatornán lévő emberektől, ha már nem játszol zenét."}]
             )
             return response.choices[0].message.content
