@@ -20,8 +20,14 @@ YDL_OPTS = {
     "quiet": True,
     "default_search": "ytsearch",
     "skip_download": True,
-    "cookiesfrombrowser": ("chrome",),
-    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/91.0.4472.124 Safari/537.36",
+    "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+    "sleep_interval": 1,
+    "max_sleep_interval": 3,
+    "extractor_args": {
+        "youtube": {
+            "player_client": ["android", "ios", "web"]
+        }
+    }
 }
 
 FFMPEG_OPTS = {
