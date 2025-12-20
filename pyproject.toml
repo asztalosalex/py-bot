@@ -1,0 +1,17 @@
+[project]
+name = "discord-bot-python"
+version = "0.1.0"
+description = "Add your description here"
+readme = "README.md"
+requires-python = ">=3.13"
+dependencies = [
+    "discord-py[voice]",
+    "elevenlabs>=2.22.1",
+    "openai>=2.7.2",
+    "python-dotenv>=1.2.1",
+    "requests>=2.32.5",
+    "yt-dlp>=2025.10.22",
+]
+
+[tool.uv.sources]
+discord-py = { git = "https://github.com/Rapptz/discord.py", rev = "master" }
