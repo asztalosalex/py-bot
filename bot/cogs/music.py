@@ -1,13 +1,12 @@
 import asyncio
-import functools
 import os
-from typing import Deque, Dict, Optional, Tuple
+from typing import Dict, Optional, Tuple
 
 import discord
 from discord.ext import commands
 from openai_service.ai_init import AiInit
 from tts.tts import TTS
-
+import json
 try:
     import yt_dlp as ytdlp
 except Exception: 
@@ -16,18 +15,12 @@ except Exception:
 
 YDL_OPTS = {
     "format": "bestaudio/best",
-    "noplaylist": True,
+    "noplaylist": False,
     "quiet": True,
-    "default_search": "ytsearch",
+    "default_search": "ytsearch1",
     "skip_download": True,
     "user_agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
-    "sleep_interval": 1,
-    "max_sleep_interval": 3,
-    "extractor_args": {
-        "youtube": {
-            "player_client": ["android", "ios", "web"]
-        }
-    }
+    "max_sleep_interval": 3
 }
 
 FFMPEG_OPTS = {
@@ -37,6 +30,7 @@ FFMPEG_OPTS = {
 
 
 class GuildMusicState:
+
     def __init__(self, bot: commands.Bot):
         self.bot = bot
         self.queue: asyncio.Queue[Tuple[str, str]] = asyncio.Queue()
@@ -117,7 +111,6 @@ class GuildMusicState:
                 await asyncio.sleep(0.5)
 
 
-
 class Music(commands.Cog):
     def __init__(self, bot: commands.Bot):
         self.bot = bot
@@ -140,8 +133,6 @@ class Music(commands.Cog):
         state.text_channel = ctx.channel
         return state
 
-
-
     @commands.command(name="join", description="Csatlakozik a hangcsatornához")
     async def join(self, ctx: commands.Context):
         state = await self.ensure_connected(ctx)
@@ -158,7 +149,7 @@ class Music(commands.Cog):
         state.current = None
         await ctx.reply("Lecsatlakoztam.")
 
-    @commands.command(name="play", description="Lejátsz egy számot")
+    @commands.command(name="play", description="Youtube-ról lejátsz egy számot vagy egy playlistet")
     async def play(self, ctx: commands.Context, *, query: str):
         state = await self.ensure_connected(ctx)
         if ytdlp is None:
@@ -167,22 +158,32 @@ class Music(commands.Cog):
 
         loop = asyncio.get_running_loop()
 
-        def extract_info():
+        def extract_info() -> list[Tuple[str, str]] | Tuple[str, str]:
             with ytdlp.YoutubeDL(YDL_OPTS) as ydl:
                 info = ydl.extract_info(query, download=False)
+                playlist: list[Tuple[str, str]] = []
+
                 if "entries" in info:
-                    info = info["entries"][0]
+                    for entry in info["entries"]:
+                        if entry.get("title") and entry.get("url"):
+                            playlist.append((entry.get("title"), entry.get("url")))
+                    return playlist
                 return info.get("title") or "Untitled", info["url"]
 
         try:
-            title, stream_url = await loop.run_in_executor(None, extract_info)
+            playlist = await loop.run_in_executor(None, extract_info)
         except Exception as e:
             await ctx.reply(f"Nem sikerült lekérni: {e}")
             return
 
-        await state.queue.put((title, stream_url))
+        for title, stream_url in playlist:
+            await state.queue.put((title, stream_url))
         await state.ensure_player()
-        await ctx.reply(f"Hozzáadva a sorhoz: {title}")
+
+        if len(playlist) > 1:
+            await ctx.reply(f"Hozzáadva a sorhoz: {len(playlist)} szám")
+        else:
+            await ctx.reply(f"Hozzáadva a sorhoz: {title}")
 
     @commands.command(name="pause", description="Szünetelteti a lejátszást")
     async def pause(self, ctx: commands.Context):
@@ -235,7 +236,6 @@ class Music(commands.Cog):
         if not description:
             description = ["Üres a sor."]
         await ctx.reply("\n".join(description))
-        
 
 
 async def setup(bot: commands.Bot):

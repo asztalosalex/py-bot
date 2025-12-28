@@ -3,7 +3,6 @@ import os
 from dotenv import load_dotenv
 from discord.ext import commands
 import asyncio
-import openai
 from openai_service.ai_init import AiInit
 from tts.tts import TTS
 
