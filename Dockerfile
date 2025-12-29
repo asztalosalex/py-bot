@@ -1,4 +1,4 @@
-FROM python:3.12-bullseye
+FROM python:3.13-bullseye
 
 WORKDIR /app
 
@@ -7,6 +7,6 @@ RUN apt-get update && apt-get install -y mpv \
 
 COPY . .
 
-RUN pip install --no-cache-dir -r requirements.txt
+RUN pip install uv
 
-CMD ["python3", "main.py"]
+CMD ["uv", "run", "main.py"]
