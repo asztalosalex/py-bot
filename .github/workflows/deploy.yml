@@ -12,17 +12,17 @@ jobs:
       contents: read
       deployments: write
 
+    env:
+      SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
+      SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
+      VPS_HOST: ${{ secrets.VPS_HOST }}
+      VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
+      DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
+      SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
     steps:
       - uses: actions/checkout@v4
 
       - name: Set up SSH
-        env:
-          SSH_PRIVATE_KEY: ${{ secrets.SSH_PRIVATE_KEY }}
-          SSH_KNOWN_HOSTS: ${{ secrets.SSH_KNOWN_HOSTS }}
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           mkdir -p ~/.ssh
           echo "$SSH_PRIVATE_KEY" > ~/.ssh/gitcicd
@@ -31,9 +31,6 @@ jobs:
           chmod 600 ~/.ssh/known_hosts
 
       - name: Test Connection
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
         run: |
           if ! ssh -o BatchMode=yes -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST 'exit 0'; then
             echo "Failed to establish SSH connection"
@@ -42,18 +39,8 @@ jobs:
 
       - name: Deploy to VPS
         if: success()
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Starting Deployment ==="
-          # Check for rsync
-          if ! ssh -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST 'command -v rsync > /dev/null'; then
-            echo "Installing required packages..."
-            ssh $VPS_USERNAME@$VPS_HOST 'sudo -n apt-get update > /dev/null && sudo -n apt-get install -y rsync > /dev/null'
-          fi
 
           echo "=== Managing Service ==="
           if ! ssh -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST "sudo -n systemctl stop ${SERVICE_NAME} > /dev/null 2>&1"; then
@@ -78,11 +65,6 @@ jobs:
 
       - name: Build Docker Image on VPS
         if: success()
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          DEPLOY_PATH: ${{ secrets.DEPLOY_PATH }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Build Docker image on VPS ==="
           ssh -i ~/.ssh/gitcicd -o StrictHostKeyChecking=no $VPS_USERNAME@$VPS_HOST "bash -s" <<EOF
@@ -100,10 +82,6 @@ jobs:
 
       - name: Verify Deployment
         if: success()
-        env:
-          VPS_HOST: ${{ secrets.VPS_HOST }}
-          VPS_USERNAME: ${{ secrets.VPS_USERNAME }}
-          SERVICE_NAME: ${{ secrets.SERVICE_NAME }}
         run: |
           echo "=== Checking Service Status ==="
           if ssh -i ~/.ssh/gitcicd $VPS_USERNAME@$VPS_HOST "sudo -n systemctl status ${SERVICE_NAME}"; then
