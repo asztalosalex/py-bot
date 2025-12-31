@@ -82,6 +82,17 @@ class AiInit:
         except Exception as e:
             print(f"Error while saying goodbye when bot leaves: {str(e)}")
             return None
+
+    def wait_for_playlist_message_to_user(self) -> Optional[str]:
+        try:
+            response = self.client.chat.completions.create(
+                model=MODEL,
+                messages=[{"role": "system", "content": "Hívd fel a figyelmét a felhasználónak, hogy playlistet küldött be és várnia kell, amig betöltődik minden szám."}]
+            )
+            return response.choices[0].message.content
+        except Exception as e:
+            print(f"Error while waiting for playlist: {str(e)}")
+            return None
         
 
 

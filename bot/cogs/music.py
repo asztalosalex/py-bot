@@ -6,7 +6,7 @@ import discord
 from discord.ext import commands
 from openai_service.ai_init import AiInit
 from tts.tts import TTS
-import json
+
 try:
     import yt_dlp as ytdlp
 except Exception: 
@@ -133,6 +133,24 @@ class Music(commands.Cog):
         state.text_channel = ctx.channel
         return state
 
+    def is_playlist(self, query: str) -> bool:
+        return "list" in query
+
+    async def wait_for_playlist(self, state: GuildMusicState) -> None:
+        tts = TTS()
+        ai = AiInit()
+        playlist_text = ai.wait_for_playlist_message_to_user()
+        audio_stream = tts.generate_audio(playlist_text)
+        temp_file = "wait_for_playlist.mp3"
+        with open(temp_file, "wb") as f:
+            for chunk in audio_stream:
+                f.write(chunk)
+        state.voice.play(discord.FFmpegPCMAudio(temp_file))
+        while state.voice.is_playing():
+            await asyncio.sleep(0.5)
+        os.remove(temp_file)
+        return True
+
     @commands.command(name="join", description="Csatlakozik a hangcsatornához")
     async def join(self, ctx: commands.Context):
         state = await self.ensure_connected(ctx)
@@ -155,7 +173,8 @@ class Music(commands.Cog):
         if ytdlp is None:
             await ctx.reply("Hiányzik a yt-dlp csomag.")
             return
-
+        if self.is_playlist(query):
+            await self.wait_for_playlist(state)
         loop = asyncio.get_running_loop()
 
         def extract_info() -> list[Tuple[str, str]] | Tuple[str, str]:
@@ -178,12 +197,16 @@ class Music(commands.Cog):
 
         for title, stream_url in playlist:
             await state.queue.put((title, stream_url))
+
+        
         await state.ensure_player()
 
         if len(playlist) > 1:
             await ctx.reply(f"Hozzáadva a sorhoz: {len(playlist)} szám")
         else:
             await ctx.reply(f"Hozzáadva a sorhoz: {title}")
+
+        
 
     @commands.command(name="pause", description="Szünetelteti a lejátszást")
     async def pause(self, ctx: commands.Context):
