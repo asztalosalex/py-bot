@@ -1,15 +1,18 @@
 import asyncio
+import logging
 import os
 from typing import Dict, Optional, Tuple
 
 import discord
 from discord.ext import commands
-from openai_service.ai_init import AiInit
-from tts.tts import TTS
+import random
+from urllib.parse import urlparse, parse_qs
+
+logger = logging.getLogger(__name__)
 
 try:
     import yt_dlp as ytdlp
-except Exception: 
+except Exception:
     ytdlp = None
 
 
@@ -40,6 +43,17 @@ class GuildMusicState:
         self.lock = asyncio.Lock()
         self.text_channel: Optional[discord.abc.Messageable] = None
 
+    def shuffle_queue(self) -> bool:
+        items: list[Tuple[str, str]] = []
+        while not self.queue.empty():
+            items.append(self.queue.get_nowait())
+        if not items:
+            return False
+        random.shuffle(items)
+        for item in items:
+            self.queue.put_nowait(item)
+        return True
+
     async def ensure_player(self):
         async with self.lock:
             if self.player_task is None or self.player_task.done():
@@ -52,6 +66,7 @@ class GuildMusicState:
                 item = await asyncio.wait_for(self.queue.get(), timeout=10)
                 self.current = item
                 title, stream_url = item
+
                 if not self.voice or not self.voice.is_connected():
                     self.current = None
                     continue
@@ -68,11 +83,9 @@ class GuildMusicState:
                 if self.voice and self.voice.is_connected() and not (
                     self.voice.is_playing() or self.voice.is_paused()
                 ):
-                    ai_init = AiInit()
-                    goodbye_text: str = ai_init.say_goodbye_when_bot_leaves()
+                    goodbye_text: str = self.bot.ai_init.say_goodbye_when_bot_leaves()
                     try:
-                        tts = TTS()
-                        audio_stream = tts.generate_audio(goodbye_text)
+                        audio_stream = self.bot.tts.generate_audio(goodbye_text)
                         temp_file = "goodbye.mp3"
                         with open(temp_file, "wb") as f:
                             for chunk in audio_stream:
@@ -85,7 +98,8 @@ class GuildMusicState:
                             if not self.voice.is_playing():
                                 break
                             await asyncio.sleep(0.5)
-                    except Exception as e:
+                    except Exception:
+                        logger.exception("Error while playing goodbye message")
                         try:
                             channel = None
                             if self.text_channel is not None:
@@ -107,6 +121,7 @@ class GuildMusicState:
             except asyncio.CancelledError:
                 break
             except Exception:
+                logger.exception("Error in player loop")
                 self.current = None
                 await asyncio.sleep(0.5)
 
@@ -117,7 +132,9 @@ class Music(commands.Cog):
         self.guild_states: Dict[int, GuildMusicState] = {}
 
     def get_state(self, guild: discord.Guild) -> GuildMusicState:
+        
         state = self.guild_states.get(guild.id)
+
         if not state:
             state = GuildMusicState(self.bot)
             self.guild_states[guild.id] = state
@@ -134,13 +151,14 @@ class Music(commands.Cog):
         return state
 
     def is_playlist(self, query: str) -> bool:
-        return "list" in query
+        parsed = urlparse(query)
+        if not parsed.scheme:
+            return False
+        return "list" in parse_qs(parsed.query)
 
     async def wait_for_playlist(self, state: GuildMusicState) -> None:
-        tts = TTS()
-        ai = AiInit()
-        playlist_text = ai.wait_for_playlist_message_to_user()
-        audio_stream = tts.generate_audio(playlist_text)
+        playlist_text = self.bot.ai_init.wait_for_playlist_message_to_user()
+        audio_stream = self.bot.tts.generate_audio(playlist_text)
         temp_file = "wait_for_playlist.mp3"
         with open(temp_file, "wb") as f:
             for chunk in audio_stream:
@@ -192,6 +210,7 @@ class Music(commands.Cog):
         try:
             playlist = await loop.run_in_executor(None, extract_info)
         except Exception as e:
+            logger.exception("Error extracting stream info for query: %s", query)
             await ctx.reply(f"Nem sikerült lekérni: {e}")
             return
 
@@ -259,6 +278,14 @@ class Music(commands.Cog):
         if not description:
             description = ["Üres a sor."]
         await ctx.reply("\n".join(description))
+
+    @commands.command(name="shuffle", description="Véletlenszerűen összekeveri a sort")
+    async def shuffle(self, ctx: commands.Context):
+        state = self.get_state(ctx.guild)
+        if state.shuffle_queue():
+            await ctx.reply("Sor véletlenszerűen összekevert.")
+        else:
+            await ctx.reply("Nincs sor.")
 
 
 async def setup(bot: commands.Bot):

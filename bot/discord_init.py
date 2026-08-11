@@ -1,10 +1,14 @@
 import discord
 import os
+import logging
 from dotenv import load_dotenv
 from discord.ext import commands
 import asyncio
 from openai_service.ai_init import AiInit
 from tts.tts import TTS
+
+logger = logging.getLogger(__name__)
+
 
 class DiscordBot(commands.Bot):
 
@@ -14,32 +18,33 @@ class DiscordBot(commands.Bot):
         if not self.token:
             raise ValueError("No DC_TOKEN found in .env file")
 
-        print("Initializing bot...")
+        logger.info("Initializing bot...")
         intents = discord.Intents.default()
         intents.message_content = True
         intents.presences = True
         intents.members = True
         super().__init__(command_prefix='!', intents=intents, description='pybot')
-        
+
+        self.ai_init = AiInit()
+        self.tts = TTS()
+
 
     async def setup_hook(self):
         """This is called when the bot starts up"""
         try:
             await self.load_extension('bot.cogs.ai_handler')
             await self.load_extension('bot.cogs.music')
-            print("Extensions loaded successfully")
-        except Exception as e:
-            print(f"Error loading extensions: {e}")
+            logger.info("Extensions loaded successfully")
+        except Exception:
+            logger.exception("Error loading extensions")
 
     async def on_voice_state_update(self, member, before, after):
         try:
             if before.channel is None and after.channel is not None:
                 if member.name != "Gyula":
                     
-                    ai_init = AiInit()
-                    greeting_text = ai_init.greet_user(member.name)
-                    tts = TTS()
-                    audio_stream = tts.generate_audio(greeting_text)
+                    greeting_text = self.ai_init.greet_user(member.name)
+                    audio_stream = self.tts.generate_audio(greeting_text)
 
                     temp_file = f"{member.name}_joined_voice_channel.mp3"
                     with open(temp_file, "wb") as f:
@@ -56,15 +61,15 @@ class DiscordBot(commands.Bot):
                         await asyncio.sleep(0.5)
 
                     if not voice.is_connected():
-                        print("Voice client failed to connect after timeout.")
+                        logger.warning("Voice client failed to connect after timeout.")
                         os.remove(temp_file)
                         return
 
                     # Now safe to play
                     try:
                         voice.play(discord.FFmpegPCMAudio(temp_file))
-                    except discord.ClientException as e:
-                        print(f"Failed to play audio: {e}")
+                    except discord.ClientException:
+                        logger.exception("Failed to play audio")
                         await voice.disconnect()
                         os.remove(temp_file)
                         return
@@ -75,29 +80,25 @@ class DiscordBot(commands.Bot):
                     await voice.disconnect()
                     os.remove(temp_file)
                 elif before.channel is not None and after.channel is None:
-                    print(f"{member.name} left the voice channel: {before.channel.name}")
+                    logger.info("%s left the voice channel: %s", member.name, before.channel.name)
 
                 elif before.channel is not None and after.channel is not None and before.channel.id != after.channel.id:
-                    print(f"{member.name} moved from {before.channel.name} to {after.channel.name}")
-        except Exception as e:
-            print(f"Error in on_voice_state_update: {e}")
-            import traceback
-            traceback.print_exc()
-
+                    logger.info("%s moved from %s to %s", member.name, before.channel.name, after.channel.name)
+        except Exception:
+            logger.exception("Error in on_voice_state_update")
 
     async def on_ready(self):
-        print(f'Successfully logged in as {self.user}')
-        print(f'Bot ID: {self.user.id}')
-        print('Bot is connected servers below:')
+        logger.info("Successfully logged in as %s", self.user)
+        logger.info("Bot ID: %s", self.user.id)
+        logger.info("Bot is connected to %d server(s):", len(self.guilds))
         for guild in self.guilds:
-            print(f'- {guild.name} (ID: {guild.id})')
+            logger.info("- %s (ID: %s)", guild.name, guild.id)
 
     def run_bot(self):
-    
         try:
-            print("Starting the bot...")
+            logger.info("Starting the bot...")
             super().run(self.token)
         except discord.errors.LoginFailure:
-            print("Invalid token. Please check your DC_TOKEN in .env file")
-        except Exception as e:
-            print(f"An error occurred while running the bot: {e}")
+            logger.error("Invalid token. Please check your DC_TOKEN in .env file")
+        except Exception:
+            logger.exception("An error occurred while running the bot")
